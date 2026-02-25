@@ -79,8 +79,8 @@
   </div>
   <div class="card" style="margin-top:50px; border-top: 4px solid #6366f1;">
     <div style="display: flex; gap: 15px; margin-bottom: 40px;">
-        <button onclick="chatModuDegistir('ozel')" id="btn-ozel" style="flex:1; padding:50px; cursor:pointer; border:none; border-radius:5px; background:#6366f1; color:white;">👤 Yönetici</button>
-        <button onclick="chatModuDegistir('grup')" id="btn-grup" style="flex:1; padding:50px; cursor:pointer; border:none; border-radius:5px; background:#94a3b8; color:white;">👥 Etkinlik Grubu</button>
+        <button onclick="chatModuDegistir('ozel')" id="btn-ozel" style="flex:1; padding:50px; cursor:pointer; border:none; border-radius:5px; background:#6366f1; color:white; font-size: 25">👤 Yönetici</button>
+        <button onclick="chatModuDegistir('grup')" id="btn-grup" style="flex:1; padding:50px; cursor:pointer; border:none; border-radius:5px; background:#94a3b8; color:white; font-size: 25">👥 Etkinlik Grubu</button>
         <select id="p-chat-grup-secici" style="display:none; width:100%; padding:16px; margin-top:5px; border-radius:5px; border:1px solid #ddd;" onchange="mesajlariYukle()">
         </select>
     
@@ -939,10 +939,10 @@ async function duyurulariYuklePersonel() {
   }
 
   duyuruDiv.innerHTML = data.map(d => `
-    <div class="card" style="background: #fff3cd; border-left: 5px solid #f59e0b; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: #92400e;">
+    <div class="card" style="background: #fff3cd; border-left: 5px solid #f59e0b; padding: 45px; margin-bottom: 10px; border-radius: 8px; color: #92400e;">
       <strong>📢 Duyuru:</strong> <br>
-      <span style="font-size: 14px;">${d.mesaj}</span> <br>
-      <small style="font-size: 10px; color: #b45309; display: block; margin-top: 5px;">
+      <span style="font-size: 30px;">${d.mesaj}</span> <br>
+      <small style="font-size: 25px; color: #b45309; display: block; margin-top: 5px;">
         ${new Date(d.created_at).toLocaleDateString('tr-TR')}
       </small>
     </div>
