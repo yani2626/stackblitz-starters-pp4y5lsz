@@ -70,29 +70,29 @@
 <div id="personelPanel" class="app-container" style="display:none; flex-direction:column; padding:40px;">
   <div style="display:flex; justify-content:space-between; align-items:center;">
     <h2 id="p_selam">Merhaba, ...</h2>
-    <button class="btn-danger" style="padding:50px 75px;" onclick="location.reload()">Çıkış</button>
+    <button class="btn-danger" style="padding:50px 75px; font-size: 35px;" onclick="location.reload()">Çıkış</button>
   </div>
   <hr>
   <h3>📅 Görevli Olduğun Etkinlikler</h3>
   <div id="p_gorev_listesi"></div>
   <div id="p_duyuru_alani" style="margin-top: 45px;">
   </div>
-  <div class="card" style="margin-top:20px; border-top: 4px solid #6366f1;">
+  <div class="card" style="margin-top:50px; border-top: 4px solid #6366f1;">
     <div style="display: flex; gap: 15px; margin-bottom: 40px;">
-        <button onclick="chatModuDegistir('ozel')" id="btn-ozel" style="flex:1; padding:16px; cursor:pointer; border:none; border-radius:5px; background:#6366f1; color:white;">👤 Yönetici</button>
-        <button onclick="chatModuDegistir('grup')" id="btn-grup" style="flex:1; padding:16px; cursor:pointer; border:none; border-radius:5px; background:#94a3b8; color:white;">👥 Etkinlik Grubu</button>
+        <button onclick="chatModuDegistir('ozel')" id="btn-ozel" style="flex:1; padding:50px; cursor:pointer; border:none; border-radius:5px; background:#6366f1; color:white;">👤 Yönetici</button>
+        <button onclick="chatModuDegistir('grup')" id="btn-grup" style="flex:1; padding:50px; cursor:pointer; border:none; border-radius:5px; background:#94a3b8; color:white;">👥 Etkinlik Grubu</button>
         <select id="p-chat-grup-secici" style="display:none; width:100%; padding:16px; margin-top:5px; border-radius:5px; border:1px solid #ddd;" onchange="mesajlariYukle()">
         </select>
     
     </div>
     
-    <div id="p-chat-penceresi" style="height: 250px; overflow-y: auto; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 10px;">
-        <p style="text-align:center; color:gray; font-size:12px; margin-top:100px;">Mesajlar yükleniyor...</p>
+    <div id="p-chat-penceresi" style="height: 250px; overflow-y: auto; background: #f8fafc; padding: 45px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 10px;">
+        <p style="text-align:center; color:gray; font-size:30px; margin-top:100px;">Mesajlar yükleniyor...</p>
     </div>
     
     <div style="display: flex; gap: 5px;">
         <input type="text" id="p-mesaj-input" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:8px;" placeholder="Mesaj yazın...">
-        <button onclick="mesajGonder()" style="padding:10px 15px; background:#6366f1; color:white; border:none; border-radius:8px; cursor:pointer;">Gönder</button>
+        <button onclick="mesajGonder()" style="padding:30px 60px; background:#6366f1; color:white; border:none; border-radius:8px; cursor:pointer;">Gönder</button>
     </div>
 </div>
 
