@@ -38,6 +38,43 @@ nav a[aria-current='page'] {
 
 main {
   padding: 1rem;
+  /* MOBİL ÖZEL AYARLAR */
+@media (max-width: 600px) {
+    /* Yan menüyü mobilde gizle veya alta al */
+    .sidebar {
+        display: none; 
+    }
+    
+    .container {
+        margin-left: 0 !important;
+        padding: 10px !important;
+    }
+
+    /* Kartları uygulama gibi yap */
+    .card {
+        border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
+        padding: 15px;
+        border: none;
+    }
+
+    /* Butonları parmakla basılacak kadar büyüt */
+    button {
+        width: 100%;
+        height: 50px;
+        font-size: 16px !important;
+        border-radius: 10px;
+        margin-top: 10px;
+    }
+
+    /* Başlıkları ortala ve sadeleştir */
+    h2, h3 {
+        text-align: center;
+        color: #333;
+    }
+}
+
 }
 
 h1 {
