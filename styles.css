@@ -38,7 +38,11 @@ nav a[aria-current='page'] {
 
 main {
   padding: 1rem;
-  /* MOBİL ÖZEL AYARLAR */
+h1 {
+  font-weight: bold;
+  font-size: 1.5rem;
+}
+/* MOBİL ÖZEL AYARLAR */
 @media (max-width: 600px) {
     /* Yan menüyü mobilde gizle veya alta al */
     .sidebar {
@@ -73,11 +77,4 @@ main {
         text-align: center;
         color: #333;
     }
-}
-
-}
-
-h1 {
-  font-weight: bold;
-  font-size: 1.5rem;
 }
