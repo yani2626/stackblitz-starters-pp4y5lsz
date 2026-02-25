@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Mekan Yönetim Paneli PRO v3.5</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root { --primary: #2563eb; --dark: #1e293b; --bg: #f1f5f9; --red: #ef4444; --green: #16a34a; --orange: #f59e0b; }
+  body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #334155; }
+  .app-container { display: flex; height: 100vh; }
+  .sidebar { width: 240px; background: var(--dark); color: white; padding: 25px; display: flex; flex-direction: column; }
+  .content { flex: 1; padding: 40px; overflow-y: auto; }
+  .card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+  input, select { width: 100%; margin: 8px 0; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+  button { padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; margin: 2px; }
+  .btn-main { background: var(--primary); color: white; width: 100%; }
+  .btn-nav { background: #334155; color: white; margin-bottom: 8px; text-align: left; width: 100%; }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-success { background: var(--green); color: white; }
+  .btn-edit { background: var(--orange); color: white; }
+  .center-box { width: 400px; margin: 80px auto; background: white; padding: 30px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+  .list-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; align-items: center; }
+  .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; display: flex; justify-content: center; align-items: center; z-index: 2000; }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading-overlay"><h3>Yükleniyor...</h3></div>
+
+<div id="admin-panel" class="container mt-4" style="display:none;">
+<ul class="nav nav-tabs" id="adminTabs" role="tablist">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#staff-tab">Personeller</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#inventory-tab">Stok</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#finance-tab">Maliyetler</a></li>
+</ul>
+
+<div class="tab-content border p-3 bg-light">
+  <div id="staff-tab" class="tab-pane fade show active">
+    <h4>Personel & Performans</h4>
+    <div id="personel-listesi-tablo" class="row"></div>
+  </div>
+  
+  <div id="inventory-tab" class="tab-pane fade">
+    <h4>Depo / Stok</h4>
+    <div id="stok-listesi-tablo"></div>
+  </div>
+</div>
+</div>
+
+
+<div id="loginScreen" class="center-box" style="display:none;">
+  <h2 style="color: var(--primary)">Mekan Yönetim</h2>
+  <input type="email" id="email" placeholder="E-posta">
+  <input type="password" id="password" placeholder="Şifre">
+  <button class="btn-main" onclick="girisYap()">Giriş Yap</button>
+  <button class="btn-success" style="width:100%; margin-top:10px;" onclick="kayitOl()">Kayıt Ol</button>
+  <button class="btn-nav" style="color: var(--primary); margin-top: 10px; width: 100%; text-align: center;" onclick="loginEkranDegistir('personel')">
+     Personel Girişi Yap
+</button>
+
+</div>
+<div id="personelLoginScreen" class="center-box" style="display:none;">
+  <h2 style="color: var(--purple)">Personel Girişi</h2>
+  <p>Sisteme kayıtlı telefon numaranızla giriş yapın.</p>
+  <input type="tel" id="p_login_tel" placeholder="5xx xxx xxxx">
+  <button class="btn-succes" style="color:var(--green); width:100%;" onclick="personelGirisYap()">Etkinliklerimi Gör</button>
+  <button class="btn-main" onclick="loginEkranDegistir('admin')">Yönetici Girişine Dön</button>
+</div>
+
+<div id="personelPanel" class="app-container" style="display:none; flex-direction:column; padding:20px;">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h2 id="p_selam">Merhaba, ...</h2>
+    <button class="btn-danger" onclick="location.reload()">Çıkış</button>
+  </div>
+  <hr>
+  <h3>📅 Görevli Olduğun Etkinlikler</h3>
+  <div id="p_gorev_listesi"></div>
+  <div id="p_duyuru_alani" style="margin-top: 15px;">
+  </div>
+  <div class="card" style="margin-top:20px; border-top: 4px solid #6366f1;">
+    <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+        <button onclick="chatModuDegistir('ozel')" id="btn-ozel" style="flex:1; padding:8px; cursor:pointer; border:none; border-radius:5px; background:#6366f1; color:white;">👤 Yönetici</button>
+        <button onclick="chatModuDegistir('grup')" id="btn-grup" style="flex:1; padding:8px; cursor:pointer; border:none; border-radius:5px; background:#94a3b8; color:white;">👥 Etkinlik Grubu</button>
+        <select id="p-chat-grup-secici" style="display:none; width:100%; padding:8px; margin-top:5px; border-radius:5px; border:1px solid #ddd;" onchange="mesajlariYukle()">
+        </select>
+    
+    </div>
+    
+    <div id="p-chat-penceresi" style="height: 250px; overflow-y: auto; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 10px;">
+        <p style="text-align:center; color:gray; font-size:12px; margin-top:100px;">Mesajlar yükleniyor...</p>
+    </div>
+    
+    <div style="display: flex; gap: 5px;">
+        <input type="text" id="p-mesaj-input" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:8px;" placeholder="Mesaj yazın...">
+        <button onclick="mesajGonder()" style="padding:10px 15px; background:#6366f1; color:white; border:none; border-radius:8px; cursor:pointer;">Gönder</button>
+    </div>
+</div>
+
+
+</div>
+
+<div id="mekanSecimScreen" class="center-box" style="display:none;">
+  <h3>Mekan Yönetimi</h3>
+  <div class="card" style="box-shadow: none; border: 1px solid #eee;">
+    <input type="text" id="yeni_mekan_adi" placeholder="Yeni Mekan Adı">
+    <button class="btn-success" style="width:100%" onclick="mekanEkle()">+ Yeni Mekan Ekle</button>
+  </div>
+  <hr>
+  <label>Seçili Mekan:</label>
+  <select id="sel_mekan_listesi"></select>
+  <div style="display: flex; gap: 5px; margin-top: 10px;">
+    <button class="btn-edit" style="flex:1" onclick="mekanDuzenle()">Adı Düzenle</button>
+    <button class="btn-main" style="flex:2" onclick="mekanOnayla()">Giriş Yap</button>
+  </div>
+</div>
+<div id="ai-chat-window" style="position:fixed; bottom:80px; right:20px; width:350px; height:450px; background:white; border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.2); display:none; flex-direction:column; z-index:2000; overflow:hidden; border: 1px solid #ddd;">
+  <div style="background:var(--primary); color:white; padding:15px; font-weight:bold; display:flex; justify-content:space-between;">
+    <span>🤖 Akıllı Asistan</span>
+    <span style="cursor:pointer" onclick="document.getElementById('ai-chat-window').style.display='none'">✖</span>
+  </div>
+  <div id="ai-messages" style="flex:1; overflow-y:auto; padding:15px; background:#f9f9f9; font-size:14px;">
+    <div style="margin-bottom:10px; color:#555;"><i>Merhaba! Sana nasıl yardımcı olabilirim? (Örn: "Yarınki düğüne Ahmet'i ekle" veya "Bu ayki toplam personel maliyetim ne?")</i></div>
+  </div>
+  <div style="padding:10px; border-top:1px solid #eee; display:flex;">
+    <input type="text" id="ai-input" placeholder="Bir komut yaz..." style="flex:1; border:1px solid #ddd; padding:8px; border-radius:5px;">
+    <button onclick="aiSorguGonder()" style="margin-left:5px; background:var(--primary); color:white; border-radius:5px;">Gönder</button>
+  </div>
+</div>
+
+<button onclick="chatAcKapat()" style="position:fixed; bottom:20px; right:20px; width:50px; height:50px; border-radius:50%; background:var(--primary); color:white; font-size:20px; z-index:2000; box-shadow:0 4px 10px rgba(0,0,0,0.3); border:none; cursor:pointer;">🤖</button>
+
+<div id="stok" class="page" style="display:none;">
+<h1>📦 Depo / Stok Durumu</h1>
+<div class="card">
+  <div style="display: flex; gap: 10px;">
+    <input type="text" id="s_ad" placeholder="Ürün Adı (Örn: Volkan)">
+    <input type="number" id="s_miktar" placeholder="Mevcut Adet">
+    <button class="btn-success" style="width:150px;" onclick="stokEkle()">+ Ekle</button>
+  </div>
+</div>
+<div id="s_liste"></div>
+</div>
+
+<div id="app" class="app-container" style="display:none;">
+  <div class="sidebar">
+    <h3 id="aktif-mekan-label" style="color: var(--orange);">Mekan</h3>
+    <button class="btn-nav" onclick="sayfaGoster('dashboard')">📊 Dashboard</button>
+    <button class="btn-nav" onclick="sayfaGoster('personel')">👥 Personel Havuzu</button>
+    <button class="btn-nav" onclick="sayfaGoster('stok')">📦 Stok Yönetimi</button>
+    <button class="btn-nav" onclick="sayfaGoster('etkinlik')">📅 Etkinlikler</button>
+    <button class="btn-nav" onclick="sayfaGoster('atama')">🔗 Personel Ata</button>
+    <button class="btn-nav" onclick="sayfaGoster('duyuru')" style="display: block; width: 100%; background: #334155;">📢 Duyuru & Bildirimler</button>
+    <button class="nav-btn" onclick="sayfaGoster('mesajlar')">💬 Mesajlar</button>
+    <button class="btn-main" style="background: #25D366; margin-top: 10px;" onclick="whatsappListeOlustur()">
+      🟢 WhatsApp Listesi Kopyala
+  </button>  
+    <button class="btn-danger" style="margin-top: 20px;" onclick="mekanSil()">🗑️ Mekanı Sil</button>
+    <button class="nav-btn" onclick="sayfaGoster('yardim')">💡 Yardım & Kullanım</button>
+    <button class="btn-nav" style="margin-top: auto; background:#475569;" onclick="cikisYap()">🚪 Çıkış Yap</button>
+  </div>
+
+  <div class="content">
+    <div id="dashboard" class="page">
+      <h1>Dashboard</h1>
+      <div style="display: flex; gap: 20px;">
+        <div class="card" style="flex:1; text-align: center;"> <h2 id="stat-personel">0</h2> <p>Personel</p> </div>
+        <div class="card" style="flex:1; text-align: center;"> <h2 id="stat-etkinlik">0</h2> <p>Etkinlik</p> </div>
+      </div>
+    </div>
+
+    <div id="personel" class="page" style="display:none;">
+      <h1>Personel Havuzu</h1>
+      <div class="card">
+        <input type="text" id="p_isim" placeholder="Ad Soyad">
+        <input type="text" id="p_tel" placeholder="Telefon">
+        <input type="number" id="p_yevmiye" placeholder="Yevmiye (TL)">
+        <button class="btn-success" onclick="personelEkle()">+ Ekle</button>
+        <div class="card" style="background: #e2e8f0;">
+          <input type="text" id="p_ara" placeholder="🔍 Personel İsmiyle Ara..." oninput="personelFiltrele()">
+        </div>        
+      </div>
+      <div id="p_liste"></div>
+    </div>
+    <div id="page-mesajlar" class="page" style="display:none;">
+      <div style="display: grid; grid-template-columns: 250px 1fr; gap: 20px; height: 80vh;">
+          
+          <div style="background: #fff; border-radius: 12px; padding: 15px; border: 1px solid #e2e8f0; overflow-y: auto;">
+              <h3 style="font-size: 16px; margin-bottom: 15px;">Sohbetler</h3>
+              <div id="admin-chat-listesi">
+                  </div>
+          </div>
+  
+          <div style="background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column;">
+              <div id="admin-chat-baslik" style="padding: 15px; border-bottom: 1px solid #eee; font-weight: bold;">Bir sohbet seçin</div>
+              <div id="admin-chat-penceresi" style="flex: 1; overflow-y: auto; padding: 15px; background: #f8fafc;"></div>
+              <div style="padding: 15px; display: flex; gap: 10px;">
+                  <input type="text" id="admin-mesaj-input" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;" placeholder="Mesajınız...">
+                  <button onclick="adminMesajGonder()" style="padding:10px 20px; background:#6366f1; color:white; border:none; border-radius:8px;">Gönder</button>
+              </div>
+          </div>
+  
+      </div>
+  </div>
+  
+
+<div id="page-yardim" class="page" style="display:none; padding:20px;">
+    <h2>🚀 Sistem v1 Kullanım Kılavuzu</h2>
+    <hr>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top:20px;">
+        <div class="card">
+            <h3>📢 Duyuru & Mesajlaşma</h3>
+            <ul>
+                <li><b>Duyurular:</b> Tüm personele aynı anda gider, personelin ekranında anında belirir.</li>
+                <li><b>Özel Mesaj:</b> Personel listesinden birini seçip direkt yazışabilirsin.</li>
+                <li><b>Etkinlik Grupları:</b> Bir etkinliğe atadığın herkes o grubun içinde otomatik toplanır.</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h3>📅 Etkinlik Yönetimi</h3>
+            <ul>
+                <li>Etkinlik oluştururken tarih ve saat girmeyi unutma.</li>
+                <li><b>Personel Atama:</b> Etkinlik detayından personelleri seçip "Ata" dersen, görev onların paneline düşer.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+  
+
+    <div id="etkinlik" class="page" style="display:none;">
+      <h1>Etkinlikler</h1>
+      <div class="card">
+        <input type="text" id="e_ad" placeholder="Etkinlik Adı">
+        <div style="display: flex; gap: 10px;">
+          <input type="date" id="e_tarih" style="flex: 2;">
+          <input type="text" id="e_saat" placeholder="Saat" style="flex: 1;">
+        </div>
+        <button class="btn-success" onclick="etkinlikEkle()">Etkinlik Oluştur</button>
+      </div>
+      <div id="e_liste"></div>
+    </div>
+    <div id="page-duyuru" class="page" style="display:none;">
+      <h2 style="margin-bottom: 20px;">📢 Duyuru ve Bildirim Merkezi</h2>
+  
+      <div class="card" style="border-left: 5px solid #ef4444; background: #fff; padding: 20px; margin-bottom: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <h3 style="color: #ef4444; margin-top: 0;">⚠️ Gelen İptal Bildirimleri</h3>
+          <p style="font-size: 13px; color: #666;">Personellerin "Gelemeyeceğim" dediği görevler burada listelenir.</p>
+          <div id="iptal-listesi" style="margin: 15px 0; min-height: 50px;">
+              <p style="color:gray; font-style: italic;">Yükleniyor...</p>
+          </div>
+          <button class="btn-main" style="background: #374151; width: auto; font-size: 13px;" onclick="bildirimleriTemizle()">Hepsini Okundu İşaretle</button>
+      </div>
+  
+      <div class="card" style="border-left: 5px solid #8b5cf6; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <h3 style="color: #8b5cf6; margin-top: 0;">📣 Yeni Duyuru Yayınla</h3>
+          <textarea id="duyuru_metni" rows="4" placeholder="Tüm personellere iletilecek mesajı yazın..." 
+                    style="width:100%; padding:12px; border: 1px solid #ddd; border-radius: 8px; font-family: sans-serif; resize: none;"></textarea>
+          <button class="btn-main" style="background: #8b5cf6; margin-top: 15px; width: 100%;" onclick="duyuruYayinla()">🚀 Duyuruyu Personellere Gönder</button>
+      </div>
+  </div>
+  
+
+    <div id="atama" class="page" style="display:none;">
+      <h1>Görevlendirme</h1>
+      <div class="card">
+        <select id="sel_etkinlik" onchange="atamaListesiniYukle()"></select>
+        <select id="sel_personel"></select>
+        <input type="text" id="a_gorev" placeholder="Görevi">
+        <button class="btn-main" onclick="atamaYap()">Ata</button>
+      </div>
+      <div id="atama_liste"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://bmaromecrtmiiafeadsi.supabase.co"; 
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtYXJvbWVjcnRtaWlhZmVhZHNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDE1NDMsImV4cCI6MjA4NzE3NzU0M30.cgIcd1hfc5G8kxp3hNFMaUovrKL2uZvcQ86uW4deUyY";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentMekanId = null;
+let currentUser = null;
+
+// OTURUM KONTROLÜ (Sayfa açıldığında)
+window.onload = async () => {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    await mekanListesiniGetir();
+  } else {
+    document.getElementById("loginScreen").style.display = "block";
+  }
+  document.getElementById("loading").style.display = "none";
+};
+
+// AUTH
+async function kayitOl() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const { error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) alert(error.message); else alert("Kayıt başarılı! Giriş yapabilirsiniz.");
+}
+
+async function girisYap() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) return alert(error.message);
+  currentUser = data.user;
+  document.getElementById("loginScreen").style.display = "none";
+  mekanListesiniGetir();
+}
+
+async function cikisYap() {
+  await supabaseClient.auth.signOut();
+  location.reload();
+}
+
+// MEKAN
+async function mekanListesiniGetir() {
+  const { data: mekanlar } = await supabaseClient.from("mekanlar").select("*").eq("sahip_id", currentUser.id);
+  document.getElementById("mekanSecimScreen").style.display = "block";
+  const sel = document.getElementById("sel_mekan_listesi");
+  sel.innerHTML = "";
+  mekanlar?.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.mekan_adi}</option>`);
+}
+
+async function mekanEkle() {
+  const ad = document.getElementById("yeni_mekan_adi").value;
+  if(!ad) return alert("Mekan adı girin!");
+  const { error } = await supabaseClient.from("mekanlar").insert([{ mekan_adi: ad, sahip_id: currentUser.id }]);
+  if(!error) { document.getElementById("yeni_mekan_adi").value = ""; mekanListesiniGetir(); }
+}
+
+async function mekanDuzenle() {
+  const sel = document.getElementById("sel_mekan_listesi");
+  const yeniAd = prompt("Yeni mekan adı:", sel.options[sel.selectedIndex].text);
+  if(yeniAd) {
+    await supabaseClient.from("mekanlar").update({ mekan_adi: yeniAd }).eq("id", sel.value);
+    mekanListesiniGetir();
+  }
+}
+
+function mekanOnayla() {
+  const sel = document.getElementById("sel_mekan_listesi");
+  if(!sel.value) return alert("Mekan seçin!");
+  currentMekanId = sel.value;
+  document.getElementById("mekanSecimScreen").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+  document.getElementById("aktif-mekan-label").innerText = sel.options[sel.selectedIndex].text;
+  verileriYukle();
+  stoklariYukle();
+  sayfaGoster('dashboard');
+}
+
+async function mekanSil() {
+  if(confirm("TÜM MEKAN VERİLERİ SİLİNECEK! Emin misiniz?")) {
+    await supabaseClient.from("mekanlar").delete().eq("id", currentMekanId);
+    location.reload();
+  }
+}
+
+// GENEL VERİLER
+
+async function personelEkle() {
+  const { error } = await supabaseClient.from("personeller").insert([{
+    isim: document.getElementById("p_isim").value,
+    telefon: document.getElementById("p_tel").value,
+    yevmiye: document.getElementById("p_yevmiye").value,
+    mekan_id: currentMekanId
+  }]);
+  if(!error) { 
+    document.getElementById("p_isim").value = ""; 
+    document.getElementById("p_tel").value = "";
+    document.getElementById("p_yevmiye").value = "";
+    verileriYukle(); 
+  }
+}
+
+async function etkinlikEkle() {
+  const adInput = document.getElementById("e_ad");
+  const tarihInput = document.getElementById("e_tarih");
+
+  const ad = adInput.value.trim();
+  const tarih = tarihInput.value;
+
+  if (!ad || !tarih) {
+    return alert("Lütfen etkinlik adını ve tarihini girin!");
+  }
+
+  if (!currentMekanId) {
+    return alert("Mekan ID bulunamadı, lütfen sayfayı yenileyip tekrar giriş yapın.");
+  }
+
+  // Supabase'e ekle
+  const { data, error } = await supabaseClient
+    .from("etkinlikler")
+    .insert([
+      { 
+        etkinlik_turu: ad, 
+        tarih: tarih, 
+        mekan_id: currentMekanId 
+      }
+    ])
+    .select();
+
+  if (error) {
+    console.error("Etkinlik ekleme hatası:", error);
+    alert("Hata oluştu: " + error.message);
+  } else {
+    // Formu temizle
+    adInput.value = "";
+    tarihInput.value = "";
+    
+    // Listeleri güncelle
+    alert("Etkinlik başarıyla eklendi!");
+    verileriYukle();
+  }
+}
+
+
+async function verileriYukle() {
+  const { data: pData } = await supabaseClient.from("personeller").select("*").eq("mekan_id", currentMekanId);
+  const pList = document.getElementById("p_liste");
+  const pSel = document.getElementById("sel_personel");
+  pList.innerHTML = ""; pSel.innerHTML = "";
+  // script.js içindeki verileriYukle fonksiyonunun ilgili kısmı
+// verileriYukle fonksiyonu içindeki pData?.forEach kısmını bununla değiştir:
+pList.innerHTML = ""; 
+pData?.forEach(p => {
+  pList.innerHTML += `
+    <div class="list-item" style="border-left: 5px solid var(--primary); margin-bottom: 10px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+      <div>
+        <strong>${p.isim}</strong> <br>
+        <small>💰 ${p.yevmiye} TL | ⭐ Puan: <b id="puan-${p.id}">${p.puan || 5}</b></small> <br>
+        <small style="color: #64748b;">📞 ${p.telefon || 'Telefon girilmemiş'}</small>
+      </div>
+      <div style="display: flex; gap: 5px; align-items: center;">
+        <button class="btn-edit" style="padding: 5px 10px;" onclick="personelDuzenle('${p.id}', '${p.isim}', ${p.yevmiye}, '${p.telefon || ''}')">✏️ Düzenle</button>
+        
+        <button class="btn-success" style="padding: 5px 10px;" onclick="puanDegistir('${p.id}', 1)">+</button>
+        <button class="btn-danger" style="padding: 5px 10px;" onclick="puanDegistir('${p.id}', -1)">-</button>
+        
+        <button class="btn-danger" style="padding: 5px 10px; background: #94a3b8;" onclick="personelSil('${p.id}')">🗑️</button>
+      </div>
+    </div>`;
+  pSel.innerHTML += `<option value="${p.id}">${p.isim}</option>`;
+});
+
+
+
+  const { data: eData } = await supabaseClient.from("etkinlikler").select("*").eq("mekan_id", currentMekanId);
+  const eList = document.getElementById("e_liste");
+  const eSel = document.getElementById("sel_etkinlik");
+  eList.innerHTML = ""; eSel.innerHTML = "";
+  eData?.forEach(e => {
+    eList.innerHTML += `<div class="list-item">📅 ${e.etkinlik_turu} - ${e.tarih} <button class="btn-danger" onclick="etkinlikSil('${e.id}')">Sil</button></div>`;
+    eSel.innerHTML += `<option value="${e.id}">${e.etkinlik_turu}</option>`;
+  });
+
+  document.getElementById("stat-personel").innerText = pData?.length || 0;
+  document.getElementById("stat-etkinlik").innerText = eData?.length || 0;
+}
+
+async function personelSil(id) {
+  if(confirm("Silinsin mi?")) { await supabaseClient.from("personeller").delete().eq("id", id); verileriYukle(); }
+}
+
+async function etkinlikSil(id) {
+  if(confirm("Silinsin mi?")) { await supabaseClient.from("etkinlikler").delete().eq("id", id); verileriYukle(); }
+}
+
+async function atamaYap() {
+  const eId = document.getElementById("sel_etkinlik").value;
+  const pId = document.getElementById("sel_personel").value;
+  const gorev = document.getElementById("a_gorev").value;
+
+  if (!eId || !pId) return alert("Lütfen etkinlik ve personel seçin!");
+
+  // 1. KONTROL: Bu personel bu etkinlikte zaten var mı?
+  const { data: mevcutAtama } = await supabaseClient
+    .from("gorev_atamalari")
+    .select("id")
+    .eq("etkinlik_id", eId)
+    .eq("personel_id", pId);
+
+  if (mevcutAtama && mevcutAtama.length > 0) {
+    return alert("Hata: Bu personel bu etkinlikte zaten görevli!");
+  }
+
+  // 2. KONTROL: Personel aynı tarihte başka bir etkinlikte mi?
+  // Önce seçilen etkinliğin tarihini alalım
+  const { data: seciliEtkinlik } = await supabaseClient
+    .from("etkinlikler")
+    .select("tarih")
+    .eq("id", eId)
+    .single();
+
+  // Personelin o tarihteki diğer görevlerine bakalım
+  const { data: cakismaVarMi } = await supabaseClient
+    .from("gorev_atamalari")
+    .select("id, etkinlikler(etkinlik_turu, tarih)")
+    .eq("personel_id", pId)
+    .filter("etkinlikler.tarih", "eq", seciliEtkinlik.tarih);
+
+  if (cakismaVarMi && cakismaVarMi.length > 0) {
+    const etkinlikAdi = cakismaVarMi[0].etkinlikler.etkinlik_turu;
+    if(!confirm(`UYARI: Bu personel aynı tarihte "${etkinlikAdi}" etkinliğinde de görevli. Yine de atamak istiyor musunuz?`)) {
+      return;
+    }
+  }
+
+  // Her şey tamamsa atamayı yap
+  const { error } = await supabaseClient.from("gorev_atamalari").insert([{
+    etkinlik_id: eId,
+    personel_id: pId,
+    gorev: gorev,
+    mekan_id: currentMekanId
+  }]);
+
+  if (!error) {
+    document.getElementById("a_gorev").value = "";
+    atamaListesiniYukle();
+  } else {
+    alert("Atama hatası: " + error.message);
+  }
+}
+
+
+async function atamaListesiniYukle() {
+  const eid = document.getElementById("sel_etkinlik").value;
+  const aList = document.getElementById("atama_liste");
+  
+  if(!eid) {
+    aList.innerHTML = `<div style="color:#64748b; padding:20px; text-align:center;">🔍 Lütfen görevlileri görmek için bir etkinlik seçin.</div>`;
+    return;
+  }
+
+  // Görevleri ve bağlı personel bilgilerini çek
+  const { data, error } = await supabaseClient
+    .from("gorev_atamalari")
+    .select("*, personeller(isim, yevmiye)")
+    .eq("etkinlik_id", eid);
+
+  if (error) {
+    aList.innerHTML = "Veri yükleme hatası!";
+    return;
+  }
+
+  if (data.length === 0) {
+    aList.innerHTML = `<div class="card" style="text-align:center; color:#94a3b8;">Bu etkinliğe henüz kimse atanmamış.</div>`;
+    return;
+  }
+
+  // Şık Liste Tasarımı
+  aList.innerHTML = `<h3 style="margin-top:20px;">📋 Atanan Personel Listesi</h3>`;
+  
+  data.forEach(g => {
+    aList.innerHTML += `
+      <div class="list-item" style="background:#fff; border-radius:10px; margin-bottom:8px; padding:12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #16a34a;">
+        <div>
+          <strong>${g.personeller?.isim || 'Bilinmeyen Personel'}</strong> <br>
+          <small style="color:#64748b;">🛠️ Görev: ${g.gorev || 'Belirtilmedi'} | 💰 ${g.personeller?.yevmiye || 0} TL</small>
+        </div>
+        <button class="btn-danger" style="padding:5px 10px; font-size:12px;" onclick="atamaSil('${g.id}')">Kaldır</button>
+      </div>
+    `;
+  });
+}
+
+// Atama Silme Fonksiyonu
+async function atamaSil(id) {
+  if(confirm("Bu personeli görevden almak istediğine emin misin?")) {
+    const { error } = await supabaseClient.from("gorev_atamalari").delete().eq("id", id);
+    if(!error) atamaListesiniYukle();
+  }
+}
+
+// Chat Penceresini Aç/Kapat
+function chatAcKapat() {
+  const win = document.getElementById("ai-chat-window");
+  win.style.display = win.style.display === "none" ? "flex" : "none";
+}
+
+// AI'ya Sorgu Gönder
+async function aiSorguGonder() {
+  const input = document.getElementById("ai-input");
+  const msgBox = document.getElementById("ai-messages");
+  const query = input.value.trim();
+  
+  if(!query) return;
+
+  // Kullanıcı mesajını ekrana yaz
+  msgBox.innerHTML += `<div style="text-align:right; margin-bottom:10px;"><span style="background:#e0e7ff; padding:8px; border-radius:10px; display:inline-block;">${query}</span></div>`;
+  input.value = "";
+  msgBox.scrollTop = msgBox.scrollHeight;
+
+  // --- N8N ENTEGRASYONU ---
+  const N8N_WEBHOOK_URL = "https://yagizkarahan.app.n8n.cloud/webhook-test/Asistan"; // n8n'den aldığın URL'yi buraya yapıştır
+
+  try {
+    const response = await fetch(N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: "ai_command",
+        text: query,
+        user_email: currentUser.email,
+        mekan_id: currentMekanId
+      })
+    });
+
+    const data = await response.json();
+    
+    // AI Cevabını ekrana yaz
+    msgBox.innerHTML += `<div style="text-align:left; margin-bottom:10px;"><span style="background:#f1f5f9; padding:8px; border-radius:10px; display:inline-block; border:1px solid #ddd;">${data.output || "İşlem tamamlandı."}</span></div>`;
+    
+    // Eğer AI bir veriyi güncellediyse listeyi tazele
+    verileriYukle();
+    
+  } catch (err) {
+    msgBox.innerHTML += `<div style="color:red; font-size:12px;">Hata:025</div>`;
+  }
+  msgBox.scrollTop = msgBox.scrollHeight;
+}
+// script.js dosyasının EN ALTINA ekle
+
+// Tab değiştirme fonksiyonu
+function tabDegistir(tabId) {
+    document.querySelectorAll('.yonetim-tab').forEach(el => el.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+    
+    if(tabId === 'tab-personel') personelleriListele();
+    if(tabId === 'tab-stok') stoklariListele();
+}
+
+// 1. Personel Listesi ve Manuel Puanlama
+async function personelleriListele() {
+    const { data, error } = await supabase.from('personeller').select('*');
+    if (error) return console.error(error);
+
+    const container = document.getElementById('personel-listesi-tablo');
+    container.innerHTML = data.map(p => `
+        <div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>${p.ad_soyad}</strong> - Yevmiye: ${p.yevmiye} TL <br>
+                <small>Puan: ${p.puan || 5}/5</small>
+            </div>
+            <div>
+                <button onclick="puanGuncelle('${p.id}', ${(p.puan || 5) - 1})" style="background:#ff4d4d; color:white; border:none; border-radius:3px;">-</button>
+                <button onclick="puanGuncelle('${p.id}', ${(p.puan || 5) + 1})" style="background:#4CAF50; color:white; border:none; border-radius:3px;">+</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 2. Puanı Supabase'e Yazma
+async function puanGuncelle(id, yeniPuan) {
+    const { error } = await supabase
+        .from('personeller')
+        .update({ puan: yeniPuan })
+        .eq('id', id);
+    
+    if (!error) personelleriListele(); // Listeyi tazele
+}
+
+// Sayfa ilk açıldığında listeyi yükle (Opsiyonel)
+// setTimeout(() => { personelleriListele(); }, 2000); 
+async function puanDegistir(id, miktar) {
+  // Önce mevcut puanı bulalım (Ekranda yazandan alabiliriz veya DB'den çekebiliriz)
+  const puanElement = document.getElementById(`puan-${id}`);
+  let mevcutPuan = parseInt(puanElement.innerText);
+  let yeniPuan = mevcutPuan + miktar;
+
+  // Sınır koyalım (Örn: 0 ile 10 arası)
+  if (yeniPuan < 0) yeniPuan = 0;
+  if (yeniPuan > 10) yeniPuan = 10;
+
+  // Supabase Güncelleme
+  const { error } = await supabaseClient
+    .from("personeller")
+    .update({ puan: yeniPuan })
+    .eq("id", id);
+
+  if (error) {
+    alert("Puan güncellenemedi: " + error.message);
+  } else {
+    // Ekranda anlık güncelle
+    puanElement.innerText = yeniPuan;
+  }
+}
+async function stokEkle() {
+  const ad = document.getElementById("s_ad").value;
+  const miktar = document.getElementById("s_miktar").value;
+  
+  if(!ad || !miktar) return alert("Lütfen tüm alanları doldur!");
+
+  const { error } = await supabaseClient.from("stok").insert([{
+    urun_adi: ad,
+    miktar: parseInt(miktar),
+    mekan_id: currentMekanId
+  }]);
+
+  if(!error) {
+    document.getElementById("s_ad").value = "";
+    document.getElementById("s_miktar").value = "";
+    stoklariYukle();
+  }
+}
+
+async function stoklariYukle() {
+  const { data, error } = await supabaseClient
+    .from("stok")
+    .select("*")
+    .eq("mekan_id", currentMekanId)
+    .order('urun_adi', { ascending: true });
+
+  const sList = document.getElementById("s_liste");
+  if (error) return sList.innerHTML = "Hata!";
+
+  // script.js içindeki stoklariYukle fonksiyonunun ilgili kısmı
+sList.innerHTML = data.map(s => `
+  <div class="list-item">
+    <div>
+      <strong>${s.urun_adi}</strong> <br>
+      <small>Stok: <b id="stok-miktar-${s.id}" style="${s.miktar <= s.kritik_esik ? 'color:red' : ''}">${s.miktar} adet</b></small>
+    </div>
+    <div>
+      <button class="btn-success" style="padding:5px 10px;" onclick="stokGuncelle('${s.id}', 1)">+</button>
+      <button class="btn-danger" style="padding:5px 10px;" onclick="stokGuncelle('${s.id}', -1)">-</button>
+      <button class="btn-edit" style="padding:5px 10px;" onclick="stokManuelGuncelle('${s.id}', '${s.urun_adi}', ${s.miktar})">✏️ Düzenle</button>
+      <button class="btn-danger" style="padding:5px 10px; background:#ef4444;" onclick="stokSil('${s.id}', '${s.urun_adi}')">🗑️</button>
+    </div>
+  </div>
+`).join('');
+
+}
+
+// Miktarı hızlıca artırıp azaltmak için
+async function stokGuncelle(id, fark) {
+  // Önce mevcut miktarı bulup üzerine ekleyelim (Pratik yöntem)
+  const { data } = await supabaseClient.from("stok").select("miktar").eq("id", id).single();
+  await supabaseClient.from("stok").update({ miktar: data.miktar + fark }).eq("id", id);
+  stoklariYukle();
+}
+async function stokManuelGuncelle(id, urunAdi, mevcutMiktar) {
+  const yeniMiktar = prompt(`${urunAdi} için yeni stok miktarını girin:`, mevcutMiktar);
+  
+  // İptal edilirse veya boş bırakılırsa işlem yapma
+  if (yeniMiktar === null || yeniMiktar === "") return;
+
+  const miktarSayi = parseInt(yeniMiktar);
+  if (isNaN(miktarSayi)) return alert("Lütfen geçerli bir sayı girin!");
+
+  const { error } = await supabaseClient
+    .from("stok")
+    .update({ miktar: miktarSayi })
+    .eq("id", id);
+
+  if (error) {
+    alert("Güncelleme hatası: " + error.message);
+  } else {
+    stoklariYukle(); // Listeyi tazele
+  }
+}
+async function stokSil(id, urunAdi) {
+  if (confirm(`"${urunAdi}" adlı ürünü tamamen silmek istediğinize emin misiniz?`)) {
+    const { error } = await supabaseClient
+      .from("stok")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert("Silme hatası: " + error.message);
+    } else {
+      stoklariYukle(); // Listeyi güncelle
+    }
+  }
+}
+
+async function personelDuzenle(id, eskiIsim, eskiYevmiye, eskiTel) {
+  const yeniIsim = prompt("Personel Adı Soyadı:", eskiIsim);
+  if (!yeniIsim) return;
+
+  const yeniYevmiye = prompt("Yevmiye (TL):", eskiYevmiye);
+  if (!yeniYevmiye) return;
+
+  const yeniTel = prompt("Telefon:", eskiTel);
+
+  const { error } = await supabaseClient
+    .from("personeller")
+    .update({ 
+      isim: yeniIsim, 
+      yevmiye: parseInt(yeniYevmiye),
+      telefon: yeniTel 
+    })
+    .eq("id", id);
+
+  if (!error) {
+    verileriYukle();
+  } else {
+    alert("Güncelleme hatası: " + error.message);
+  }
+}
+function personelFiltrele() {
+  const aranan = document.getElementById("p_ara").value.toLowerCase();
+  const kartlar = document.querySelectorAll("#p_liste .list-item");
+
+  kartlar.forEach(kart => {
+    const isim = kart.querySelector("strong").innerText.toLowerCase();
+    if (isim.includes(aranan)) {
+      kart.style.display = "flex";
+    } else {
+      kart.style.display = "none";
+    }
+  });
+}
+let aktifPersonel = null;
+
+async function personelGirisYap() {
+  const tel = document.getElementById("p_login_tel").value.trim();
+  if(!tel) return alert("Telefon girin!");
+
+  // Veritabanında bu telefonla kayıtlı personel var mı?
+  const { data, error } = await supabaseClient
+    .from("personeller")
+    .select("*")
+    .eq("telefon", tel)
+    .single();
+
+  if (error || !data) {
+    return alert("Bu numara ile kayıtlı personel bulunamadı!");
+  }
+
+  aktifPersonel = data;
+  document.getElementById("personelLoginScreen").style.display = "none";
+  document.getElementById("personelPanel").style.display = "flex";
+  document.getElementById("p_selam").innerText = `Merhaba, ${aktifPersonel.isim}`;
+  personelGorevleriniYukle();
+  // personelGirisYap fonksiyonu içinde en alta ekle:
+  duyurulariYuklePersonel();
+
+}
+
+async function personelGorevleriniYukle() {
+
+  const list = document.getElementById("p_gorev_listesi");
+  list.innerHTML = "Yükleniyor...";
+
+  // 1. ADIM: Sadece görev atamalarını çek (İlişki kurmadan)
+  const { data: atamalar, error: atamaHata } = await supabaseClient
+    .from("gorev_atamalari")
+    .select("*")
+    .eq("personel_id", aktifPersonel.id);
+
+  if (atamaHata) {
+    console.error("Atama çekme hatası:", atamaHata);
+    list.innerHTML = "Görevler alınamadı.";
+    return;
+  }
+
+  if (!atamalar || atamalar.length === 0) {
+    list.innerHTML = "Yaklaşan göreviniz bulunmuyor.";
+    return;
+  }
+
+  list.innerHTML = ""; // Temizle
+
+  // 2. ADIM: Her atama için etkinlik bilgilerini tek tek bul
+  for (const atama of atamalar) {
+    const { data: etkinlik, error: eHata } = await supabaseClient
+      .from("etkinlikler")
+      .select("etkinlik_turu, tarih")
+      .eq("id", atama.etkinlik_id)
+      .single();
+
+    const eAd = etkinlik ? etkinlik.etkinlik_turu : "Bilinmeyen Etkinlik";
+    const eTarih = etkinlik ? etkinlik.tarih : "-";
+
+    // Ekrana bas
+    list.innerHTML += `
+      <div class="card" style="border-left: 5px solid #2563eb; margin-bottom: 12px; padding: 15px; background: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <strong style="color: #1e293b; font-size: 1.1rem;">${eAd}</strong> <br>
+        <small style="color: #64748b;">📅 ${eTarih}</small> <br>
+        <p style="margin: 10px 0; font-size: 14px;">🛠️ <b>Görev:</b> ${atama.gorev_adi}</p>
+        <button class="btn-danger" style="width:100%;" onclick="iptalEt('${atama.id}', '${eAd}')">
+          ❌ Gelemeyeceğim
+        </button>
+      </div>`;
+  }
+}
+
+
+
+
+async function iptalEt(gorevId, etkinlikAdi) {
+  if(!confirm(`${etkinlikAdi} görevini iptal etmek istediğine emin misin?`)) return;
+
+  // Yöneticiye bildirim gönder
+  await supabaseClient.from("bildirimler").insert([{
+    mekan_id: aktifPersonel.mekan_id,
+    mesaj: `${aktifPersonel.isim}, "${etkinlikAdi}" etkinliğine gelemeyeceğini bildirdi!`,
+    okundu: false
+  }]);
+
+  // Görevi sil
+  await supabaseClient.from("gorev_atamalari").delete().eq("id", gorevId);
+
+  alert("İptal bildirildi. Yöneticine bilgi verildi.");
+  personelGorevleriniYukle();
+}
+function loginEkranDegistir(mod) {
+  // Yönetici giriş ekranı ve Personel giriş ekranı divlerini al
+  const adminDiv = document.getElementById("loginScreen"); 
+  const personelDiv = document.getElementById("personelLoginScreen");
+
+  if (mod === 'admin') {
+    personelDiv.style.display = "none";
+    adminDiv.style.display = "block";
+  } else {
+    adminDiv.style.display = "none";
+    personelDiv.style.display = "block";
+  }
+}
+
+async function duyurulariYuklePersonel() {
+  const { data, error } = await supabaseClient
+    .from("duyurular")
+    .select("*")
+    .eq("mekan_id", aktifPersonel.mekan_id)
+    .order('created_at', { ascending: false })
+    .limit(3); // En son yayınlanan 3 duyuruyu göster
+
+  const duyuruDiv = document.getElementById("p_duyuru_alani");
+  
+  if (error || !data || data.length === 0) {
+    duyuruDiv.innerHTML = ""; // Duyuru yoksa boş kalsın
+    return;
+  }
+
+  duyuruDiv.innerHTML = data.map(d => `
+    <div class="card" style="background: #fff3cd; border-left: 5px solid #f59e0b; padding: 15px; margin-bottom: 10px; border-radius: 8px; color: #92400e;">
+      <strong>📢 Duyuru:</strong> <br>
+      <span style="font-size: 14px;">${d.mesaj}</span> <br>
+      <small style="font-size: 10px; color: #b45309; display: block; margin-top: 5px;">
+        ${new Date(d.created_at).toLocaleDateString('tr-TR')}
+      </small>
+    </div>
+  `).join('');
+}
+async function iptalBildirimleriniYukle() {
+  const liste = document.getElementById("iptal-listesi");
+  if (!liste) return;
+
+  const { data, error } = await supabaseClient
+    .from("bildirimler")
+    .select("*")
+    .eq("mekan_id", currentMekanId)
+    .eq("okundu", false)
+    .order('created_at', { ascending: false });
+
+  if (error || !data || data.length === 0) {
+    liste.innerHTML = "<p style='color:gray;'>Yeni iptal bildirimi yok.</p>";
+    return;
+  }
+
+  liste.innerHTML = data.map(b => `
+    <div style="padding:10px; border-bottom:1px solid #fee2e2; background:#fff5f5; border-radius:5px; margin-bottom:5px; font-size:13px;">
+      <strong>⚠️ İptal:</strong> ${b.mesaj}
+    </div>
+  `).join('');
+}
+async function duyuruYayinla() {
+  const mesaj = document.getElementById("duyuru_metni").value.trim();
+  
+  if (!mesaj) return alert("Lütfen bir mesaj yazın!");
+
+  const { error } = await supabaseClient
+    .from("duyurular") 
+    .insert([{
+      mekan_id: currentMekanId,
+      mesaj: mesaj
+    }]);
+
+  if (!error) {
+    alert("🚀 Duyuru tüm personellere gönderildi!");
+    document.getElementById("duyuru_metni").value = "";
+    // Kendi ekranımızdaki listeyi de tazele (isteğe bağlı)
+  } else {
+    alert("Hata oluştu: " + error.message);
+  }
+}
+function sayfaGoster(sayfaId) {
+  document.querySelectorAll(".page").forEach(p => p.style.display = "none");
+
+  let hedef = document.getElementById(sayfaId);
+  if (!hedef) {
+    hedef = document.getElementById('page-' + sayfaId);
+  }
+
+  if (hedef) {
+    hedef.style.display = "block";
+  }
+
+  if(sayfaId === 'atama') {
+    atamaListesiniYukle();
+  }
+  if(sayfaId === 'stok') {
+    stoklariYukle();
+  }
+  if (sayfaId === 'duyuru') {
+    iptalBildirimleriniYukle();
+  }
+}
+
+async function bildirimleriTemizle() {
+  const { error } = await supabaseClient
+    .from("bildirimler")
+    .update({ okundu: true })
+    .eq("mekan_id", currentMekanId)
+    .eq("okundu", false);
+
+  if (!error) {
+    iptalBildirimleriniYukle();
+  }
+}
+
+async function whatsappListeOlustur() {
+  const { data: personeller } = await supabaseClient
+    .from("personeller")
+    .select("isim, telefon")
+    .eq("mekan_id", currentMekanId);
+
+  if (!personeller || personeller.length === 0) {
+    return alert("Personel bulunamadı!");
+  }
+
+  let liste = "PERSONEL LİSTESİ:\n\n";
+  personeller.forEach(p => {
+    liste += `${p.isim} - ${p.telefon || 'Tel yok'}\n`;
+  });
+
+  navigator.clipboard.writeText(liste).then(() => {
+    alert("Liste panoya kopyalandı! WhatsApp'a yapıştırabilirsiniz.");
+  }).catch(() => {
+    alert("Kopyalama başarısız. Liste:\n\n" + liste);
+  });
+}
+
+// --- MESAJLAŞMA MOTORU V1 ---
+let mevcutChatModu = 'ozel'; 
+let seciliAdminHedefId = null; 
+
+// 1. PERSONEL: Mesajları ve Grupları Yükle
+async function mesajlariYukle() {
+    if (!aktifPersonel) return;
+    const pencere = document.getElementById("p-chat-penceresi");
+    const grupSecici = document.getElementById("p-chat-grup-secici");
+    
+    let sorgu = supabaseClient.from("mesajlar").select(`*, personeller(isim)`);
+
+    if (mevcutChatModu === 'ozel') {
+        // Personel-Admin Özel Yazışma
+        sorgu = sorgu.or(`and(gonderen_id.eq.${aktifPersonel.id},alici_id.eq.admin),alici_id.eq.${aktifPersonel.id}`);
+    } else {
+        // Grup Yazışması
+        const eId = grupSecici.value;
+        if (!eId) { pencere.innerHTML = "Grup seçiniz..."; return; }
+        sorgu = sorgu.eq('grup_id', eId).eq('alici_id', 'grup');
+    }
+
+    const { data: mesajlar } = await sorgu.order('created_at', { ascending: true });
+    pencere.innerHTML = mesajlar.map(m => mesajBaloncuğuOlustur(m, aktifPersonel.id)).join('');
+    pencere.scrollTop = pencere.scrollHeight;
+}
+
+// 2. YÖNETİCİ: Mesajları Yükle
+async function adminMesajlariYukle() {
+    if (!seciliAdminHedefId) return;
+    const pencere = document.getElementById("admin-chat-penceresi");
+    
+    let sorgu = supabaseClient.from("mesajlar").select(`*, personeller(ad_soyad)`);
+
+    if (adminSeciliTip === 'ozel') {
+        sorgu = sorgu.or(`and(gonderen_id.eq.${seciliAdminHedefId},alici_id.eq.admin),and(alici_id.eq.${seciliAdminHedefId},gonderen_id.is.null)`);
+    } else {
+        sorgu = sorgu.eq('grup_id', seciliAdminHedefId).eq('alici_id', 'grup');
+    }
+
+    const { data: mesajlar } = await sorgu.order('created_at', { ascending: true });
+    pencere.innerHTML = mesajlar.map(m => mesajBaloncuğuOlustur(m, null)).join(''); // Admin için gonderen_id null
+    pencere.scrollTop = pencere.scrollHeight;
+}
+
+// Ortak Baloncuk Tasarımı
+function mesajBaloncuğuOlustur(m, karsilastirmaId) {
+    const benMiyim = m.gonderen_id === karsilastirmaId; // Admin için karsilastirmaId null gelir
+    const isim = m.personeller ? m.personeller.ad_soyad : "Yönetici";
+    return `
+        <div style="text-align: ${benMiyim ? 'right' : 'left'}; margin-bottom: 8px;">
+            <small style="font-size:10px; color:#666;">${benMiyim ? 'Siz' : isim}</small><br>
+            <div style="display:inline-block; padding:8px 12px; border-radius:12px; background:${benMiyim ? '#6366f1':'#e2e8f0'}; color:${benMiyim ? 'white':'black'}; max-width:80%;">
+                ${m.mesaj}
+            </div>
+        </div>`;
+}
+
+
+
+
+</script>
+</body>
+</html>
