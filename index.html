@@ -470,47 +470,19 @@ async function etkinlikSil(id) {
   if(confirm("Silinsin mi?")) { await supabaseClient.from("etkinlikler").delete().eq("id", id); verileriYukle(); }
 }
 
-async function atamaYap() {
+  async function atamaYap() {
   const eId = document.getElementById("sel_etkinlik").value;
   const pId = document.getElementById("sel_personel").value;
   const gorev = document.getElementById("a_gorev").value;
 
+  // Temel seçim kontrolü (Hala bir personel ve etkinlik seçilmiş olmalı)
   if (!eId || !pId) return alert("Lütfen etkinlik ve personel seçin!");
 
-  // 1. KONTROL: Bu personel bu etkinlikte zaten var mı?
-  const { data: mevcutAtama } = await supabaseClient
-    .from("gorev_atamalari")
-    .select("id")
-    .eq("etkinlik_id", eId)
-    .eq("personel_id", pId);
+  /* NOT: 1. ve 2. Kontrol bölümleri (Mevcut atama ve Tarih çakışması) 
+     isteğin üzerine kaldırılmıştır. 
+  */
 
-  if (mevcutAtama && mevcutAtama.length > 0) {
-    return alert("Hata: Bu personel bu etkinlikte zaten görevli!");
-  }
-
-  // 2. KONTROL: Personel aynı tarihte başka bir etkinlikte mi?
-  // Önce seçilen etkinliğin tarihini alalım
-  const { data: seciliEtkinlik } = await supabaseClient
-    .from("etkinlikler")
-    .select("tarih")
-    .eq("id", eId)
-    .single();
-
-  // Personelin o tarihteki diğer görevlerine bakalım
-  const { data: cakismaVarMi } = await supabaseClient
-    .from("gorev_atamalari")
-    .select("id, etkinlikler(etkinlik_turu, tarih)")
-    .eq("personel_id", pId)
-    .filter("etkinlikler.tarih", "eq", seciliEtkinlik.tarih);
-
-  if (cakismaVarMi && cakismaVarMi.length > 0) {
-    const etkinlikAdi = cakismaVarMi[0].etkinlikler.etkinlik_turu;
-    if(!confirm(`UYARI: Bu personel aynı tarihte "${etkinlikAdi}" etkinliğinde de görevli. Yine de atamak istiyor musunuz?`)) {
-      return;
-    }
-  }
-
-  // Her şey tamamsa atamayı yap
+  // Herhangi bir filtreleme yapmadan doğrudan atamayı gerçekleştir
   const { error } = await supabaseClient.from("gorev_atamalari").insert([{
     etkinlik_id: eId,
     personel_id: pId,
@@ -519,12 +491,16 @@ async function atamaYap() {
   }]);
 
   if (!error) {
+    // Formu temizle ve listeyi yenile
     document.getElementById("a_gorev").value = "";
-    atamaListesiniYukle();
+    if (typeof atamaListesiniYukle === "function") {
+      atamaListesiniYukle();
+    }
   } else {
     alert("Atama hatası: " + error.message);
   }
 }
+
 
 
 async function atamaListesiniYukle() {
