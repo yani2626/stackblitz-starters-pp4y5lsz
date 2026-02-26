@@ -1,6 +1,9 @@
 * {
   box-sizing: border-box;
 }
+#login-container {
+    display: none; /* İlk başta görünmesin */
+}
 
 body {
   margin: 0;
